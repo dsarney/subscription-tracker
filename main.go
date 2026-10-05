@@ -10,6 +10,14 @@ import (
 	_ "github.com/lib/pq"
 )
 
+type Subscription struct {
+	ID        string
+	Name      string
+	Frequency string
+	Status    string
+	AutoRenew bool
+}
+
 func main() {
 	dsn, err := loadDSN()
 	if err != nil {
@@ -22,7 +30,19 @@ func main() {
 	}
 	defer db.Close()
 
-	fmt.Println("connected to database successfully")
+	subscriptions, err := listSubscriptions(db)
+	if err != nil {
+		log.Fatalf("list subscriptions: %v", err)
+	}
+
+	if len(subscriptions) == 0 {
+		fmt.Println("No subscriptions found")
+		return
+	}
+
+	for _, s := range subscriptions {
+		fmt.Printf("%s | %s | %s | %s | auto_renew=%v\n", s.ID, s.Name, s.Frequency, s.Status, s.AutoRenew)
+	}
 }
 
 func connectionDB(dsn string) (*sql.DB, error) {
@@ -48,4 +68,28 @@ func loadDSN() (string, error) {
 	}
 
 	return dsn, nil
+}
+
+func listSubscriptions(db *sql.DB) ([]Subscription, error) {
+	rows, err := db.Query(`SELECT id, name, frequency, status, auto_renew FROM subscriptions ORDER BY name`)
+	if err != nil {
+		return nil, fmt.Errorf("list subscriptions: %w", err)
+	}
+	defer rows.Close()
+
+	subscriptions := []Subscription{}
+
+	for rows.Next() {
+		var s Subscription
+		if err := rows.Scan(&s.ID, &s.Name, &s.Frequency, &s.Status, &s.AutoRenew); err != nil {
+			return nil, fmt.Errorf("scan subscription: %w", err)
+		}
+		subscriptions = append(subscriptions, s)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("rows error: %w", err)
+	}
+
+	return subscriptions, nil
 }
