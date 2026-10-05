@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strconv"
 	"strings"
 
 	"github.com/joho/godotenv"
@@ -21,7 +22,7 @@ type Subscription struct {
 
 func main() {
 	if len(os.Args) < 2 {
-		fmt.Println("usage: got run . <command>")
+		fmt.Println("usage: go run . <command>")
 		fmt.Println("commands: list, add <name> <frequency> <status> <auto_renew>, update <id> <name> <frequency> <status> <auto_renew>, delete <id>")
 		os.Exit(1)
 	}
@@ -55,7 +56,25 @@ func main() {
 			fmt.Printf("%s | %s | %s | %s | auto_renew=%v\n", s.ID, s.Name, s.Frequency, s.Status, s.AutoRenew)
 		}
 	case "add":
-		fmt.Println("add subscription")
+		if len(os.Args) < 6 {
+			fmt.Println("usage: go run . add <name> <frequency> <status> <auto_renew>")
+			os.Exit(1)
+		}
+
+		name := os.Args[2]
+		frequency := strings.ToLower(os.Args[3])
+		status := strings.ToLower(os.Args[4])
+
+		autoRenew, err := strconv.ParseBool(os.Args[5])
+		if err != nil {
+			log.Fatalf("auto_renew must be true or false: %v", err)
+		}
+
+		if err := addSubscription(db, name, frequency, status, autoRenew); err != nil {
+			log.Fatalf("add subscription: %v", err)
+		}
+
+		fmt.Println("subscription added")
 	case "update":
 		fmt.Println("update subscription")
 	case "delete":
@@ -114,4 +133,15 @@ func listSubscriptions(db *sql.DB) ([]Subscription, error) {
 	}
 
 	return subscriptions, nil
+}
+
+func addSubscription(db *sql.DB, name string, frequency string, status string, autoRenew bool) error {
+	_, err := db.Exec(`INSERT INTO subscriptions (name, frequency, status, auto_renew) 
+	VALUES ($1, $2, $3, $4)`, name, frequency, status, autoRenew)
+
+	if err != nil {
+		return fmt.Errorf("insert subscription: %w", err)
+	}
+
+	return nil
 }
