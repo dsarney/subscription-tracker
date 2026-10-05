@@ -76,7 +76,26 @@ func main() {
 
 		fmt.Println("subscription added")
 	case "update":
-		fmt.Println("update subscription")
+		if len(os.Args) < 7 {
+			fmt.Println("usage: go run . update <id> <name> <frequency> <status> <auto_renew>")
+			os.Exit(1)
+		}
+
+		id := os.Args[2]
+		name := os.Args[3]
+		frequency := strings.ToLower(os.Args[4])
+		status := strings.ToLower(os.Args[5])
+
+		autoRenew, err := strconv.ParseBool(os.Args[6])
+		if err != nil {
+			log.Fatalf("auto_renew must be true or false: %v", err)
+		}
+
+		if err := updateSubscription(db, id, name, frequency, status, autoRenew); err != nil {
+			log.Fatalf("update subscription: %v", err)
+		}
+
+		fmt.Println("subscription updated")
 	case "delete":
 		fmt.Println("delete subscription")
 	default:
@@ -141,6 +160,24 @@ func addSubscription(db *sql.DB, name string, frequency string, status string, a
 
 	if err != nil {
 		return fmt.Errorf("insert subscription: %w", err)
+	}
+
+	return nil
+}
+
+func updateSubscription(db *sql.DB, id string, name string, frequency string, status string, autoRenew bool) error {
+	result, err := db.Exec(`UPDATE subscriptions SET name = $1, frequency = $2, status = $3, auto_renew = $4 WHERE id = $5`, name, frequency, status, autoRenew, id)
+	if err != nil {
+		return fmt.Errorf("update subscription: %w", err)
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("rows affected: %w", err)
+	}
+
+	if rowsAffected == 0 {
+		return fmt.Errorf("subscription not found: %s", id)
 	}
 
 	return nil
