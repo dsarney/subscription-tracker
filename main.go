@@ -97,7 +97,18 @@ func main() {
 
 		fmt.Println("subscription updated")
 	case "delete":
-		fmt.Println("delete subscription")
+		if len(os.Args) < 3 {
+			fmt.Println("usage: go run . delete <id>")
+			os.Exit(1)
+		}
+
+		id := os.Args[2]
+
+		if err := deleteSubscription(db, id); err != nil {
+			log.Fatalf("delete subscriptions: %v", err)
+		}
+
+		fmt.Println("subscription deleted")
 	default:
 		fmt.Printf("unknown command: %s\n", command)
 		fmt.Println("commands: list, add <name> <frequency> <status> <auto_renew>, update <id> <name> <frequency> <status> <auto_renew>, delete <id>")
@@ -169,6 +180,24 @@ func updateSubscription(db *sql.DB, id string, name string, frequency string, st
 	result, err := db.Exec(`UPDATE subscriptions SET name = $1, frequency = $2, status = $3, auto_renew = $4 WHERE id = $5`, name, frequency, status, autoRenew, id)
 	if err != nil {
 		return fmt.Errorf("update subscription: %w", err)
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("rows affected: %w", err)
+	}
+
+	if rowsAffected == 0 {
+		return fmt.Errorf("subscription not found: %s", id)
+	}
+
+	return nil
+}
+
+func deleteSubscription(db *sql.DB, id string) error {
+	result, err := db.Exec(`DELETE FROM subscriptions WHERE id = $1`, id)
+	if err != nil {
+		return fmt.Errorf("delete subscription: %w", err)
 	}
 
 	rowsAffected, err := result.RowsAffected()

@@ -199,3 +199,62 @@ func TestUpdateSubscription(t *testing.T) {
 		t.Fatalf("updated subscription %q not found in list", id)
 	}
 }
+
+func TestDeleteSubscription(t *testing.T) {
+	dsn, err := loadDSN()
+	if err != nil {
+		t.Skipf("skipping test: %v", err)
+	}
+
+	db, err := connectionDB(dsn)
+	if err != nil {
+		t.Fatalf("connectionDB() error: %v", err)
+	}
+
+	name := "Test Delete Subscription"
+	var id string
+
+	defer db.Close()
+	defer func() {
+		if id == "" {
+			return
+		}
+
+		if _, err := db.Exec("DELETE FROM subscriptions WHERE id = $1", id); err != nil {
+			t.Errorf("cleanup delete: %v", err)
+		}
+	}()
+
+	if err := addSubscription(db, name, "monthly", "active", true); err != nil {
+		t.Fatalf("addSubscription() error: %v", err)
+	}
+
+	subscriptions, err := listSubscriptions(db)
+	if err != nil {
+		t.Fatalf("listSubscriptions() error: %v", err)
+	}
+
+	for _, s := range subscriptions {
+		if s.Name == name {
+			id = s.ID
+			break
+		}
+	}
+	if id == "" {
+		t.Fatalf("could not find added subscription %q", name)
+	}
+
+	if err := deleteSubscription(db, id); err != nil {
+		t.Fatalf("deleteSubscription() error: %v", err)
+	}
+	subscriptions, err = listSubscriptions(db)
+	if err != nil {
+		t.Fatalf("listSubscriptions() error: %v", err)
+	}
+
+	for _, s := range subscriptions {
+		if s.ID == id {
+			t.Fatalf("deleted subscription %q still found in list", id)
+		}
+	}
+}
