@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strings"
 
 	"github.com/joho/godotenv"
 	_ "github.com/lib/pq"
@@ -19,6 +20,14 @@ type Subscription struct {
 }
 
 func main() {
+	if len(os.Args) < 2 {
+		fmt.Println("usage: got run . <command>")
+		fmt.Println("commands: list, add <name> <frequency> <status> <auto_renew>, update <id> <name> <frequency> <status> <auto_renew>, delete <id>")
+		os.Exit(1)
+	}
+
+	command := strings.ToLower(os.Args[1])
+
 	dsn, err := loadDSN()
 	if err != nil {
 		log.Fatalf("load DSN: %v", err)
@@ -30,18 +39,31 @@ func main() {
 	}
 	defer db.Close()
 
-	subscriptions, err := listSubscriptions(db)
-	if err != nil {
-		log.Fatalf("list subscriptions: %v", err)
-	}
+	switch command {
+	case "list":
+		subscriptions, err := listSubscriptions(db)
+		if err != nil {
+			log.Fatalf("list subscriptions: %v", err)
+		}
 
-	if len(subscriptions) == 0 {
-		fmt.Println("No subscriptions found")
-		return
-	}
+		if len(subscriptions) == 0 {
+			fmt.Println("No subscriptions found")
+			return
+		}
 
-	for _, s := range subscriptions {
-		fmt.Printf("%s | %s | %s | %s | auto_renew=%v\n", s.ID, s.Name, s.Frequency, s.Status, s.AutoRenew)
+		for _, s := range subscriptions {
+			fmt.Printf("%s | %s | %s | %s | auto_renew=%v\n", s.ID, s.Name, s.Frequency, s.Status, s.AutoRenew)
+		}
+	case "add":
+		fmt.Println("add subscription")
+	case "update":
+		fmt.Println("update subscription")
+	case "delete":
+		fmt.Println("delete subscription")
+	default:
+		fmt.Printf("unknown command: %s\n", command)
+		fmt.Println("commands: list, add <name> <frequency> <status> <auto_renew>, update <id> <name> <frequency> <status> <auto_renew>, delete <id>")
+		os.Exit(1)
 	}
 }
 
