@@ -4,6 +4,8 @@ import (
 	"testing"
 )
 
+// TestConnectionDB checks that we can open and ping Postgres using DATABASE_URL.
+// Skips when the DSN is unavailable (e.g. CI without a database).
 func TestConnectionDB(t *testing.T) {
 	dsn, err := loadDSN()
 	if err != nil {
@@ -17,6 +19,7 @@ func TestConnectionDB(t *testing.T) {
 	defer db.Close()
 }
 
+// TestLoadDSN verifies a set DATABASE_URL is returned successfully.
 func TestLoadDSN(t *testing.T) {
 	t.Setenv("DATABASE_URL", "postgres://example")
 
@@ -29,6 +32,7 @@ func TestLoadDSN(t *testing.T) {
 	}
 }
 
+// TestLoadDSN_Missing verifies an empty DATABASE_URL produces an error.
 func TestLoadDSN_Missing(t *testing.T) {
 	t.Setenv("DATABASE_URL", "")
 
@@ -38,6 +42,7 @@ func TestLoadDSN_Missing(t *testing.T) {
 	}
 }
 
+// TestListSubscriptions ensures listing succeeds (empty table is valid).
 func TestListSubscriptions(t *testing.T) {
 	dsn, err := loadDSN()
 	if err != nil {
@@ -60,6 +65,8 @@ func TestListSubscriptions(t *testing.T) {
 	}
 }
 
+// TestAddSubscription inserts a row, asserts it appears in list, then cleans up.
+// defer order matters: cleanup delete must run before db.Close().
 func TestAddSubscription(t *testing.T) {
 	dsn, err := loadDSN()
 	if err != nil {
@@ -117,6 +124,7 @@ func TestAddSubscription(t *testing.T) {
 	}
 }
 
+// TestUpdateSubscription inserts a row, updates it by id, asserts new values, then cleans up by id.
 func TestUpdateSubscription(t *testing.T) {
 	dsn, err := loadDSN()
 	if err != nil {
@@ -200,6 +208,7 @@ func TestUpdateSubscription(t *testing.T) {
 	}
 }
 
+// TestDeleteSubscription inserts a row, deletes it by id, and asserts it no longer appears in list.
 func TestDeleteSubscription(t *testing.T) {
 	dsn, err := loadDSN()
 	if err != nil {
@@ -220,6 +229,7 @@ func TestDeleteSubscription(t *testing.T) {
 			return
 		}
 
+		// Safety net if the test fails before deleteSubscription runs.
 		if _, err := db.Exec("DELETE FROM subscriptions WHERE id = $1", id); err != nil {
 			t.Errorf("cleanup delete: %v", err)
 		}
